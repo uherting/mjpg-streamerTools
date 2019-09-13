@@ -1,2 +1,2 @@
 # mjpg-streamerTools
-additional stuff to the mjpg-streamer repository (compile / start the mjpg-streamer service)
+additional stuff to the mjpg-streamer repository (compile / start/stop the mjpg-streamer service)
