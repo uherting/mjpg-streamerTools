@@ -1,5 +1,19 @@
 #!/bin/bash
 
+
+# This script is for compilation and testing only. It is not to be used
+# as a replacement of the scripts webcam and WebcamDeamon.
+
+#
+# This script can with the parameter #1
+# a) = "compile"
+#    - fetch the mjpg-streamer-experimental repository and compiles it
+# b) = "exec"
+#    - start a test execution on mjpg-streamer executable with parameters
+#      for the connected Raspberry Pi camera with certain parameters
+#
+
+
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <compile> | <exec>"
   exit 99
