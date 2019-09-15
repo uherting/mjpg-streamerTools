@@ -1,18 +1,33 @@
 #!/bin/bash
-# Start / stop streamer daemon
+
+# Start / stop webcam streamer daemon
+
+BNAME=`basename $0 .sh`
+DNAME=`dirname $0`
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.0-6) to ensure that this file is present.
+. /lib/lsb/init-functions
+
+# read central config file
+. ${DNAME}/tools.conf
+
 
 case "$1" in
     start)
-        /home/pi/scripts/webcamDaemon >/dev/null 2>&1 &
-        echo "$0: started"
+        log_daemon_msg "Starting webcam service" "$0"
+        ${DNAME}/webcamDaemon >/dev/null 2>&1 &
+        log_end_msg $?
         ;;
     stop)
+        log_daemon_msg "Stopping webcam service" "$0"
         pkill -x webcamDaemon
         pkill -x mjpg_streamer
-        echo "$0: stopped"
+        log_end_msg $?
         ;;
     *)
-        echo "Usage: $0 {start|stop}" >&2
+        log_action_msg "Usage: ${DNAME}/${BNAME} {start|stop}"
+        exit 2
         ;;
 esac
 

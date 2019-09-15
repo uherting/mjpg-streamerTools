@@ -19,46 +19,49 @@ if [ $# -ne 1 ]; then
   exit 99
 fi
 
+PARM=$1
+
 BNAME=`basename $0 .sh`
 DNAME=`dirname $0`
 
-PARM=$1
+# read central config file
+. ${DNAME}/tools.conf
 
+if [ ! -d ${BASE_GITHUB_ROOT} ]; then
+  echo "BASE_GITHUB_ROOT dir does not exist: ${BASE_GITHUB_ROOT}"
+  exit 1
+fi
+if [ ! -d ${GITHUB_ROOT} ]; then
+  echo "GITHUB_ROOT dir does not exist: ${GITHUB_ROOT}"
+  exit 1
+fi
 
-REP_NAME="mjpg-streamer"
-GH_REPOSITORY="https://github.com/uherting/${REP_NAME}.git"
-EXPERIMENTAL_DIR="mjpg-streamer/mjpg-streamer-experimental"
-BUILD_DIR="${EXPERIMENTAL_DIR}/_build"
-
-#echo "BNAME=${BNAME}"
-#echo "DNAME=${DNAME}"
-#echo "GH_REPOSITORY=${GH_REPOSITORY}"
-
-# go to the directory where the script resides
-cd ${DNAME}/..
+# go to the directory where all GitHub repositories are stored
+cd ${GITHUB_ROOT}
 
 # compile from scratch
 if [ "${PARM}" == "compile" ]; then
-  if [ -d ${REP_NAME} ]; then
-    rm -rf ${REP_NAME}
-    echo "deleted existing dir ${REP_NAME}"
+  if [ -d ${GITHUB_REPOSITORY_NAME} ]; then
+    rm -rf ${GITHUB_REPOSITORY_NAME}
+    echo "deleted existing dir ${GITHUB_REPOSITORY_NAME}"
   fi
 
   # fetch repository:
-  git clone ${GH_REPOSITORY}
+  git clone ${GITHUB_REPOSITORY}
   if [ $? -ne 0 ]; then
-    echo "ERROR: git clone ${GH_REPOSITORY}"
+    echo "ERROR: git clone not possible on repository ${GITHUB_REPOSITORY}"
     exit 1
   fi
 
-  # just a test ...
-  cd ${EXPERIMENTAL_DIR}
+  # prepare the compilation (the dir should exist)
+  pushd ${EXPERIMENTAL_DIR}
   if [ $? -ne 0 ]; then
     echo "ERROR: cd to ${EXPERIMENTAL_DIR} not possible"
     exit 2
   fi
-  cd -
+  popd
 
+  # create the dir where compilation takes place
   mkdir -p ${BUILD_DIR}
   cd ${BUILD_DIR}
   if [ $? -ne 0 ]; then
@@ -66,12 +69,14 @@ if [ "${PARM}" == "compile" ]; then
     exit 2
   fi
 
+  # create Makefile(s) with enabled www option
   cmake -DENABLE_HTTP_MANAGEMENT=ON ..
   if [ $? -ne 0 ]; then
     echo "ERROR: cmake ended with errors"
     exit 3
   fi
 
+  # compile the program / the libraries
   make
   if [ $? -ne 0 ]; then
     echo "ERROR: make ended with errors"
@@ -81,28 +86,20 @@ fi
 
 # execution:
 if [ "${PARM}" == "exec" ]; then
-  cd ${BUILD_DIR}
+  pushd ${BUILD_DIR}
   if [ $? -ne 0 ]; then
     echo "ERROR: cd to ${BUILD_DIR} not possible"
     exit 2
   fi
-pwd
-  LD_LIBRARY_PATH=""
-  for file in output_http.so input_raspicam.so
-  do
-    FN="`find . -name ${file}`"
-    DN="`dirname ${FN}`"
-    if [ "${LD_LIBRARY_PATH}" == "" ]; then
-      LD_LIBRARY_PATH="${DN}"
-    else
-      LD_LIBRARY_PATH="${LD_LIBRARY_PATH};${DN}"
-    fi
-  done
 
-  export LD_LIBRARY_PATH
+  # export the path where the input and output libraries are located
+  export_ld_library_path "input_raspicam.so output_http.so"
   echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}"
 
-  #./mjpg_streamer -o "output_http.so -w ./www" -i "input_raspicam.so -fps 5"
-  ./mjpg_streamer -o "output_http.so -w ./www" -i "input_raspicam.so -fps 20"
+  # start the test by executing the program with parameters
+  #${NAME_OF_THE_EXECUTABLE} -o "output_http.so -w ./www" -i "input_raspicam.so -fps 5"
+  #${NAME_OF_THE_EXECUTABLE} -o "output_http.so -w ./www" -i "input_raspicam.so -fps 20"
+
+  popd
 fi
 

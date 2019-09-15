@@ -1,37 +1,54 @@
 #!/bin/bash
 
-MJPGSTREAMER_HOME=/home/pi/mjpg-streamer/mjpg-streamer-experimental
+logger "Starting ${NAME_OF_THE_EXECUTABLE} service"
+
+BNAME=`basename $0 .sh`
+DNAME=`dirname $0`
+
+# read central config file
+. ${DNAME}/tools.conf
+
+MJPGSTREAMER_HOME="${PATH_TO_EXECUTABLE}"
 MJPGSTREAMER_INPUT_USB="input_uvc.so"
 MJPGSTREAMER_INPUT_RASPICAM="input_raspicam.so"
 
 # init configuration
 camera="auto"
 camera_usb_options="-r 640x480 -f 10"
-camera_raspi_options="-fps 10"
+camera_raspi_options="-fps 20"
 
-if [ -e "/boot/octopi.txt" ]; then
-    source "/boot/octopi.txt"
-fi
+#if [ -e "/boot/octopi.txt" ]; then
+#    source "/boot/octopi.txt"
+#fi
 
-# runs MJPG Streamer, using the provided input plugin + configuration
+# runs MJPG Streamer, using the provided input_lib plugin + configuration
 function runMjpgStreamer {
-    input=$1
+    local input_lib=$1
+    local cam_options=$2
+
     pushd $MJPGSTREAMER_HOME
-    echo Running ./mjpg_streamer -o "output_http.so -w ./www" -i "$input"
-    LD_LIBRARY_PATH=. ./mjpg_streamer -o "output_http.so -w ./www" -i "$input"
+    logger "Running ./mjpg_streamer -o \"output_http.so -w ./www\" -i \"$input_lib\""
+
+    # export the path where the input and output libraries are located
+    export_ld_library_path "${input_lib} output_http.so"
+
+    # start the test by executing the program with parameters
+    #${NAME_OF_THE_EXECUTABLE} -o "output_http.so -w ./www" -i "input_raspicam.so -fps 5"
+    #${NAME_OF_THE_EXECUTABLE} -o "output_http.so -w ./www" -i "input_raspicam.so -fps 20"
+    ${EXECUTABLE_FILE} -o "output_http.so -w ./www" -i "$input_lib ${cam_options}"
     popd
 }
 
 # starts up the RasPiCam
 function startRaspi {
     logger "Starting Raspberry Pi camera"
-    runMjpgStreamer "$MJPGSTREAMER_INPUT_RASPICAM $camera_raspi_options"
+    runMjpgStreamer $MJPGSTREAMER_INPUT_RASPICAM $camera_raspi_options
 }
 
 # starts up the USB webcam
 function startUsb {
     logger "Starting USB webcam"
-    runMjpgStreamer "$MJPGSTREAMER_INPUT_USB $camera_usb_options"
+    runMjpgStreamer $MJPGSTREAMER_INPUT_USB $camera_usb_options
 }
 
 # we need this to prevent the later calls to vcgencmd from blocking
@@ -39,9 +56,9 @@ function startUsb {
 vcgencmd version
 
 # echo configuration
-echo camera: $camera
-echo usb options: $camera_usb_options
-echo raspi options: $camera_raspi_options
+logger "${NAME_OF_THE_EXECUTABLE}: camera: $camera"
+logger "${NAME_OF_THE_EXECUTABLE}: usb options: $camera_usb_options"
+logger "${NAME_OF_THE_EXECUTABLE}: raspi options: $camera_raspi_options"
 
 # keep mjpg streamer running if some camera is attached
 while true; do
